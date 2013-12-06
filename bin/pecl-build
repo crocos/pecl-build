@@ -1,0 +1,211 @@
+#!/bin/bash
+set -e
+
+usage() {
+    echo "USAGE: `basename $0` [Options] <package>"
+    echo "  build pecl php ectension for any versions php."
+    echo ""
+    echo "Required:"
+    echo "  package             install package name."
+    echo "                      e.g."
+    echo "                          `basename $0` apcu          # latest version"
+    echo "                          `basename $0` apcu-4.0.2    # version specific"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help              show this help."
+    echo "  -v, --verbose           show detail commands."
+    echo "  --dry                   dry run mode."
+    echo "  -d, --base-dir          specified build directory.      (default: /tmp/pecl-build)"
+    echo "  -p, --phpize            absolute path for phpize.       (default: environment dependent)"
+    echo "  -i, --php-config        aboslute path for php-config.   (default: environment dependent)"
+    echo "  -c, --configure-options additional configure options.   (default: nothing)"
+    echo "  -z, --zend-extension    registerd zend_extensin at ini file generated."
+    echo "  --skip-test             skip make test."
+    exit 1;
+}
+
+main() {
+    script_dir=$(cd $(dirname $0); pwd)
+    opts=`getopt -o hvd:p:i:c:z -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,dry, -- "$@"`
+    eval set -- "$opts"
+    while [ -n "$1" ]; do
+        case $1 in
+            -h|--help) usage;;
+            -d|--base-dir) base_dir=$2; shift;;
+            -p|--phpize) phpize=$2; shift;;
+            -i|--php-config) phpconfig=$2; shift;;
+            -c|--configure-options) configure_options=$2; shift;;
+            -z|--zend-extension) is_zend=1;;
+            --skip-test) is_skip_test=1;;
+            -v|--verbose) is_verbose=1;;
+            --dry) is_dry=1;;
+            --) shift; break;;
+            *) usage;;
+        esac
+        shift
+    done
+
+    if [ $is_dry ];then
+        info "dry run..."
+    fi
+
+    package=$1
+    if [ "x$package" = "x" ];then
+        fatal "package is required."
+        usage
+    fi
+    debug "install package: $(green $package)"
+
+    # extension build base dir
+    if [ "x$base_dir" = "x" ];then
+        base_dir=/tmp/pecl-build
+    fi
+    debug "base_dir: $(green $base_dir)"
+
+    # phpize command path
+    if [ "x$phpize" = "x" ];then
+        phpize=phpize
+    else
+        phpize=$(echo $phpize) # path expantion
+        if [ "${phpize:0:1}" != "/" ];then
+            fatal "phpize command path must be absolute: $phpize"
+            usage
+        fi
+    fi
+    debug "phpize command: $(green $phpize)"
+
+    # additional configure options
+    if [ "x$configure_options" = "x" ];then
+        configure_options=
+    fi
+
+    # php-config command path
+    if [ "x$phpconfig" = "x" ];then
+        phpconfig=php-config
+    else
+        phpconfig=$(echo $phpconfig) #path expantion
+        if [ "${phpconfig:0:1}" != "/" ];then
+            fatal "php-config command path must be absolute: $phpconfig"
+            usage
+        else
+            configure_options="--with-php-config=$phpconfig $configure_options"
+        fi
+    fi
+    debug "php-config command: $(green $phpconfig)"
+    debug "additional configure options: $(green $configure_options)"
+
+    ### main ###
+
+    # crete build base
+    pecl_url=http://pecl.php.net/get
+    url=$pecl_url/$package
+
+    tarball=$(curl -I $url 2>/dev/null |grep Content-disposition |cut -d'=' -f2 |tr -d \")
+    package_name=${tarball%.*}
+    extension=${package_name%-*}
+    version=${package_name##*-}
+    build_dir=$base_dir/$extension
+
+    debug "url: $(green $url)"
+    debug "tarball: $(green $tarball)"
+    debug "package_name: $(green $package_name)"
+    debug "extension: $(green $extension)"
+    debug "version: $(green $version)"
+    debug "build_dir: $(green $build_dir)"
+
+    info "create build directory: $(green $build_dir)"
+    run mkdir -p $build_dir
+    if [ -e "$build_dir/$package_name" ];then
+        warn "already exist old dir. remove it."
+        run rm -rf $build_dir/$package_name
+    fi
+
+    # fetch package
+    info "fetch package: $(green $url)"
+    run curl $url \| tar xzf - -C $build_dir
+
+    # build package
+    info "build package"
+
+    run cd $base_dir/$extension/$package_name
+    run $phpize
+    run ./configure $configure_options
+    run make
+    if [ $is_skip_test ];then
+        warn "skip test mode. not run 'make test'"
+    else
+        run make test
+    fi
+    run make install
+
+    # create ini file
+    ini_dir=$(eval "$($phpconfig --php-binary) --ini" | grep 'additional .ini' |cut -d':' -f2 |sed -e 's/ //g')
+    extension_dir=$($phpconfig --extension-dir)
+
+    debug "ini_dir: $(green $ini_dir)"
+    debug "extension_dir: $(green $extension_dir)"
+
+    content=
+    if [ $is_zend ];then
+        content="zend_extension=$($phpconfig --extension-dir)/$extension.so"
+    else
+        content="extension=$extension.so"
+    fi
+
+    info "create $(green $ini_dir/$extension.ini) file."
+    run echo "$content" \| tee $ini_dir/$extension.ini
+}
+
+## utility
+run() {
+    if [ $is_dry ]; then
+        echo "[dry run] $@"
+    else
+        if [ $is_verbose ];then
+            echo "[run] $@"
+        fi
+        eval "$@"
+    fi
+}
+
+red() {
+    echo -n "[1;31m$1[0m"
+}
+
+yellow() {
+    echo -n "[1;33m$1[0m"
+}
+
+green() {
+    echo -n "[1;32m$1[0m"
+}
+
+gray() {
+    echo -n "[1;30m$1[0m"
+}
+
+fatal() {
+    red "[fatal] "
+    echo "$1"
+}
+
+warn() {
+    yellow "[warn] "
+    echo "$1"
+}
+
+info() {
+    green "[info] "
+    echo "$1"
+}
+
+debug() {
+    if [ $is_dry ] || [ $is_verbose ];then
+        gray "[debug] "
+        echo "$1"
+    fi
+}
+
+# call main.
+main "$@"
+

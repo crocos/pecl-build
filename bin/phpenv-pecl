@@ -1,0 +1,148 @@
+#!/bin/bash
+set -e
+
+usage() {
+    echo "USAGE: `basename $0` [Options] <package>"
+    echo "  build php extesion  on phpenv (without system)"
+    echo ""
+    echo "Required:"
+    echo "  package             package name."
+    echo "                      e.g."
+    echo "                          `basename $0` apcu          # latest version"
+    echo "                          `basename $0` apcu-4.0.2    # version specific"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help              show this help."
+    echo "  -v, --verbose           show detail commands."
+    echo "  -j, --php-version       build for specified php version."
+    echo "  -a, --all               build for all php verions phpenv have. when -a used, -j option is ignored."
+    echo "  -z, --zend-extension    registerd zend_extensin at ini file generated."
+    echo "  --dry                   dry run mode."
+    exit 1;
+}
+
+main() {
+    script_dir=$(cd $(dirname $0); pwd)
+    opts=`getopt -o hvj:az -l help,verbose,php-version:,all,zend-extension,dry, -- "$@"`
+    eval set -- "$opts"
+    while [ -n "$1" ]; do
+        case $1 in
+            -h|--help) usage;;
+            -j|--php-version) phpversion=$2; shift;;
+            -a|--all) is_all=1;;
+            -z|--zend-extension) is_zend=1;;
+            -v|--verbose) is_verbose=1;;
+            --dry) is_dry=1;;
+            --) shift; break;;
+            *) usage;;
+        esac
+        shift
+    done
+
+    if [ $is_dry ];then
+        info "dry run..."
+    fi
+
+    if [ -z "$PHPENV_ROOT" ]; then
+      PHPENV_ROOT="${HOME}/.phpenv"
+    fi
+
+    package="$1"
+    if [ "x$package" = "x" ];then
+        fatal "package is required."
+        usage
+    fi
+
+    versions=
+    if [ $is_all ];then
+        versions=$(ls $PHPENV_ROOT/versions)
+    elif [ "x$phpversion" != "x" ];then
+        versions="$phpversion"
+    else
+        versions="$(phpenv version-name)"
+    fi
+
+    for v in $versions
+    do
+        _build_extension $package $v
+    done
+    run phpenv rehash
+}
+
+_build_extension() {
+    local package=$1
+    local version=$2
+
+    if [ "$version" = "system" ];then
+        warn "skip install 'system' environment."
+        return
+    else
+        local php_dir=$PHPENV_ROOT/versions/$version
+        if [ ! -e "$php_dir" ];then
+            warn "$(green $version) version dir not exist. skip it."
+            return
+        fi
+
+        local options=
+        if [ $is_zend ];then
+            options="-z $options"
+        fi
+
+        info "build $(green $package) on php-$(green $version)"
+        run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config $options
+    fi
+}
+
+## utility
+run() {
+    if [ $is_dry ]; then
+        echo "[dry run] $@"
+    else
+        if [ $is_verbose ];then
+            echo "[run] $@"
+        fi
+        eval "$@"
+    fi
+}
+
+red() {
+    echo -n "[1;31m$1[0m"
+}
+
+yellow() {
+    echo -n "[1;33m$1[0m"
+}
+
+green() {
+    echo -n "[1;32m$1[0m"
+}
+
+gray() {
+    echo -n "[1;30m$1[0m"
+}
+
+fatal() {
+    red "[fatal] "
+    echo "$1"
+}
+
+warn() {
+    yellow "[warn] "
+    echo "$1"
+}
+
+info() {
+    green "[info] "
+    echo "$1"
+}
+
+debug() {
+    if [ $is_dry ] || [ $is_verbose ];then
+        gray "[debug] "
+        echo "$1"
+    fi
+}
+
+# call main.
+main "$@"
+
