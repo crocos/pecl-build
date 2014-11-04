@@ -89,7 +89,7 @@ _build_extension() {
         fi
 
         info "build $(green $package) on php-$(green $version)"
-        run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config $options
+        run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config --skip-test $options
     fi
 }
 
@@ -145,4 +145,3 @@ debug() {
 
 # call main.
 main "$@"
-

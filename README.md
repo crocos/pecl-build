@@ -13,7 +13,7 @@ If you want usage detail, type `--help`.
 ```
 
 When standalone, build php version is system default.
-If you want use other php version, you can change `phpize` and `php-config` command by parameter.
+If you want to use another php version, you can change `phpize` and `php-config` command by parameter.
 
 ```
 $ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
@@ -22,12 +22,12 @@ $ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
 ### Use phpenv plugins
 
 ```
-% git clone https://github.com/crocos/pecl-build.git $PHPENV_ROOT/plugins/pecl-build
+% git clone https://github.com/berenddeboer/pecl-build.git $PHPENV_ROOT/plugins/pecl-build
 % phpenv pecl <package_name>
 ```
 
-phpenv plugin follow php version for phpenv specified.
-If you want specify build php version, you can set parameter.
+phpenv plugin follows the php version installed by phpenv.
+If you want to build for a specific php version, you can specify a parameter.
 
 ```
 % phpenv pecl <package_name> -j <php version>
@@ -53,4 +53,3 @@ so created `.ini` config set `zend_extension`
 * Initial Version
 
 AUTHOR:: Daichi Kamemoto <yudoufu@crocos.co.jp>
-
