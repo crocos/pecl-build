@@ -17,7 +17,7 @@ usage() {
     echo "  --dry                   dry run mode."
     echo "  -d, --base-dir          specified build directory.      (default: /tmp/pecl-build)"
     echo "  -p, --phpize            absolute path for phpize.       (default: environment dependent)"
-    echo "  -i, --php-config        aboslute path for php-config.   (default: environment dependent)"
+    echo "  -i, --php-config        absolute path for php-config.   (default: environment dependent)"
     echo "  -c, --configure-options additional configure options.   (default: nothing)"
     echo "  -z, --zend-extension    registerd zend_extensin at ini file generated."
     echo "  --skip-test             skip make test."
@@ -57,13 +57,13 @@ main() {
     debug "install package: $(green $package)"
 
     # extension build base dir
-    if [ "x$base_dir" = "x" ];then
+    if [ -z $base_dir ];then
         base_dir=/tmp/pecl-build
     fi
     debug "base_dir: $(green $base_dir)"
 
     # phpize command path
-    if [ "x$phpize" = "x" ];then
+    if [ -z $phpize ];then
         phpize=phpize
     else
         phpize=$(echo $phpize) # path expantion
@@ -75,12 +75,12 @@ main() {
     debug "phpize command: $(green $phpize)"
 
     # additional configure options
-    if [ "x$configure_options" = "x" ];then
+    if [ -z $configure_options ];then
         configure_options=
     fi
 
     # php-config command path
-    if [ "x$phpconfig" = "x" ];then
+    if [ -z $phpconfig ];then
         phpconfig=php-config
     else
         phpconfig=$(echo $phpconfig) #path expantion
@@ -96,11 +96,11 @@ main() {
 
     ### main ###
 
-    # crete build base
+    # create build base
     pecl_url=http://pecl.php.net/get
     url=$pecl_url/$package
 
-    tarball=$(curl -I $url 2>/dev/null |grep Content-disposition |cut -d'=' -f2 |tr -d \")
+    tarball=$(curl -I $url 2>/dev/null |grep -i Content-disposition |cut -d'=' -f2 |tr -d \")
     package_name=${tarball%.*}
     extension=${package_name%-*}
     version=${package_name##*-}
@@ -113,10 +113,10 @@ main() {
     debug "version: $(green $version)"
     debug "build_dir: $(green $build_dir)"
 
-    info "create build directory: $(green $build_dir)"
+    info "creating build directory: $(green $build_dir)"
     run mkdir -p $build_dir
     if [ -e "$build_dir/$package_name" ];then
-        warn "already exist old dir. remove it."
+        warn "removing exist old dir $build_dir/$package_name."
         run rm -rf $build_dir/$package_name
     fi
 
@@ -208,4 +208,3 @@ debug() {
 
 # call main.
 main "$@"
-
