@@ -16,6 +16,7 @@ usage() {
     echo "  -v, --verbose           show detail commands."
     echo "  -j, --php-version       build for specified php version."
     echo "  -a, --all               build for all php verions phpenv have. when -a used, -j option is ignored."
+    echo "  -c, --configure-options configure options."
     echo "  -z, --zend-extension    registerd zend_extensin at ini file generated."
     echo "  --dry                   dry run mode."
     exit 1;
@@ -23,13 +24,14 @@ usage() {
 
 main() {
     script_dir=$(cd $(dirname $0); pwd)
-    opts=`getopt -o hvj:az -l help,verbose,php-version:,all,zend-extension,dry, -- "$@"`
+    opts=`getopt -o hvj:ac:z -l help,verbose,php-version:,all,configure-options:,zend-extension,dry, -- "$@"`
     eval set -- "$opts"
     while [ -n "$1" ]; do
         case $1 in
             -h|--help) usage;;
             -j|--php-version) phpversion=$2; shift;;
             -a|--all) is_all=1;;
+            -c|--configure-options) configure_options=$2; shift;;
             -z|--zend-extension) is_zend=1;;
             -v|--verbose) is_verbose=1;;
             --dry) is_dry=1;;
@@ -62,9 +64,15 @@ main() {
         versions="$(phpenv version-name)"
     fi
 
+   configure=
+   if [ "x$configure_options" != "x" ];then
+    info "package configuration parameters $configure_options"
+    configure="$configure_options"
+   fi
+
     for v in $versions
     do
-        _build_extension $package $v
+        _build_extension $package $v $configure
     done
     run phpenv rehash
 }
@@ -72,6 +80,7 @@ main() {
 _build_extension() {
     local package=$1
     local version=$2
+    local configure=$3
 
     if [ "$version" = "system" ];then
         warn "skip install 'system' environment."
@@ -83,13 +92,18 @@ _build_extension() {
             return
         fi
 
-        local options=
+        local conf_options=
+    if [ $configure ];then
+        conf_options="-c $configure"
+    fi
+
+    local options=
         if [ $is_zend ];then
             options="-z $options"
         fi
 
         info "build $(green $package) on php-$(green $version)"
-        run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config $options
+        run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config $options $conf_options
     fi
 }
 
@@ -106,19 +120,19 @@ run() {
 }
 
 red() {
-    echo -n "[1;31m$1[0m"
+    echo -n "$1"
 }
 
 yellow() {
-    echo -n "[1;33m$1[0m"
+    echo -n "$1"
 }
 
 green() {
-    echo -n "[1;32m$1[0m"
+    echo -n "$1"
 }
 
 gray() {
-    echo -n "[1;30m$1[0m"
+    echo -n "$1"
 }
 
 fatal() {
