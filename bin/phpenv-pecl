@@ -120,19 +120,19 @@ run() {
 }
 
 red() {
-    echo -n "$1"
+    echo -n "[1;31m$1[0m"
 }
 
 yellow() {
-    echo -n "$1"
+    echo -n "[1;33m$1[0m"
 }
 
 green() {
-    echo -n "$1"
+    echo -n "[1;32m$1[0m"
 }
 
 gray() {
-    echo -n "$1"
+    echo -n "[1;30m$1[0m"
 }
 
 fatal() {
