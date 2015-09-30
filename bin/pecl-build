@@ -100,7 +100,7 @@ main() {
     pecl_url=http://pecl.php.net/get
     url=$pecl_url/$package
 
-    tarball=$(curl -I $url 2>/dev/null |grep Content-disposition |cut -d'=' -f2 |tr -d \")
+    tarball=$(curl -I $url 2>/dev/null |grep -i Content-disposition |cut -d'=' -f2 |tr -d \")
     package_name=${tarball%.*}
     extension=${package_name%-*}
     version=${package_name##*-}
