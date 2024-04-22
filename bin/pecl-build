@@ -27,6 +27,7 @@ usage() {
 main() {
     script_dir=$(cd $(dirname $0); pwd)
     opts=`getopt -o hvd:p:i:c:z -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,dry, -- "$@"`
+    is_skip_test=1
     eval set -- "$opts"
     while [ -n "$1" ]; do
         case $1 in
@@ -36,7 +37,7 @@ main() {
             -i|--php-config) phpconfig=$2; shift;;
             -c|--configure-options) configure_options=$2; shift;;
             -z|--zend-extension) is_zend=1;;
-            --skip-test) is_skip_test=1;;
+            --run-test) is_skip_test=0;;
             -v|--verbose) is_verbose=1;;
             --dry) is_dry=1;;
             --) shift; break;;
@@ -96,38 +97,42 @@ main() {
 
     ### main ###
 
-    # crete build base
+    # create build base
     pecl_url=http://pecl.php.net/get
     url=$pecl_url/$package
 
-    tarball=$(curl -I $url 2>/dev/null |grep Content-disposition |cut -d'=' -f2 |tr -d \")
-    package_name=${tarball%.*}
-    extension=${package_name%-*}
-    version=${package_name##*-}
+	extension=${package%-*}
+    version=${package##*-}
     build_dir=$base_dir/$extension
 
     debug "url: $(green $url)"
-    debug "tarball: $(green $tarball)"
-    debug "package_name: $(green $package_name)"
     debug "extension: $(green $extension)"
     debug "version: $(green $version)"
     debug "build_dir: $(green $build_dir)"
 
     info "create build directory: $(green $build_dir)"
-    run mkdir -p $build_dir
-    if [ -e "$build_dir/$package_name" ];then
+    if [ -e "$build_dir" ];then
         warn "already exist old dir. remove it."
-        run rm -rf $build_dir/$package_name
+        run rm -rf $build_dir
     fi
+	run mkdir -p $build_dir
 
     # fetch package
     info "fetch package: $(green $url)"
+
+    # Get list of directories before extraction
+    before_dirs=$(find $build_dir -maxdepth 1 -type d | xargs -n 1 basename)
     run curl $url \| tar xzf - -C $build_dir
+    # Get list of directories after extraction
+    after_dirs=$(find $build_dir -maxdepth 1 -type d | xargs -n 1 basename)
+	# Compare the two lists to find the new directory
+    folder_name=$(comm -13 <(sort <<<"$before_dirs") <(sort <<<"$after_dirs"))
 
     # build package
     info "build package"
 
-    run cd $base_dir/$extension/$package_name
+    info "folder_name: $(green $build_dir/$folder_name)"
+    run cd $build_dir/$folder_name
     run $phpize
     run ./configure $configure_options
     run make
