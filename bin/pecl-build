@@ -100,7 +100,11 @@ main() {
     pecl_url=https://pecl.php.net/get
     url=$pecl_url/$package
 
-    tarball=$(curl -LsI $url 2>/dev/null |grep -i Content-disposition |cut -d'=' -f2 |tr -d \")
+    tarball=$(curl -LsI $url 2>/dev/null |grep -i Content-disposition |cut -d'=' -f2 |tr -d '"\r')
+    if [ "x$tarball" = "x" ];then
+        fatal "package not found: $(green $package) ($url)"
+        exit 1
+    fi
     package_name=${tarball%.*}
     extension=${package_name%-*}
     version=${package_name##*-}
@@ -122,7 +126,17 @@ main() {
 
     # fetch package
     info "fetch package: $(green $url)"
-    run curl -Ls -o- $url \| tar xzf - -C $build_dir
+    tarball_path=$build_dir/$tarball
+    run curl -Ls -o $tarball_path $url
+    if [ ! $is_dry ];then
+        if ! gzip -t "$tarball_path" 2>/dev/null;then
+            fatal "fetched file is not a valid gzip package: $(green $url)"
+            rm -f $tarball_path
+            exit 1
+        fi
+    fi
+    run tar xzf $tarball_path -C $build_dir
+    run rm -f $tarball_path
 
     # build package
     info "build package"

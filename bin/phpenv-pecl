@@ -1,4 +1,22 @@
 #!/bin/bash
+#
+# Summary: build php extension on phpenv (without system)
+#
+# Usage: phpenv pecl [-j <version>|--php-version <version>] [-a|--all] [-z|--zend-extension] [-v|--verbose] [--dry] <package>
+#
+# Build a pecl extension with phpize/php-config for the php version(s)
+# managed by phpenv.
+#
+#   -j, --php-version <version>  build for the specified php version.
+#   -a, --all                    build for all php versions in phpenv (ignores -j).
+#   -z, --zend-extension         register as a zend_extension in the generated ini file.
+#   -v, --verbose                show detail commands.
+#   --dry                        dry run mode.
+#
+# Example:
+#   phpenv pecl apcu           # latest version
+#   phpenv pecl apcu-4.0.2     # specific version
+#
 set -e
 
 usage() {
