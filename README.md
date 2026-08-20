@@ -45,8 +45,25 @@ To specify a package version:
 When building a `zend_extension`, pass the `-z` (`--zend-extension`) option,
 so the generated `.ini` file sets `zend_extension` instead of `extension`.
 
+### Uninstall
+
+Pass `-u` (`--uninstall`) with the package name to remove a previously
+installed extension instead of building it. This deletes the generated
+`.ini` file and the built `.so` file for that extension.
+
+```
+% bin/pecl-build <package_name> -u -i /path/to/php-config
+% phpenv pecl <package_name> -u
+% phpenv pecl <package_name> -u -a # uninstall from every PHP version phpenv has installed.
+```
+
 
 ## ChangeLog
+
+### v0.4.0 2026/08/19
+
+* Add a `-u`/`--uninstall` option to `pecl-build` and `phpenv pecl` that
+  removes a previously installed extension's `.ini` and `.so` files
 
 ### v0.3.0 2026/08/19
 

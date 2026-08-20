@@ -2,7 +2,7 @@
 #
 # Summary: build php extension on phpenv (without system)
 #
-# Usage: phpenv pecl [-j <version>|--php-version <version>] [-a|--all] [-z|--zend-extension] [-v|--verbose] [--dry] <package>
+# Usage: phpenv pecl [-j <version>|--php-version <version>] [-a|--all] [-z|--zend-extension] [-u|--uninstall] [-v|--verbose] [--dry] <package>
 #
 # Build a pecl extension with phpize/php-config for the php version(s)
 # managed by phpenv.
@@ -10,12 +10,14 @@
 #   -j, --php-version <version>  build for the specified php version.
 #   -a, --all                    build for all php versions in phpenv (ignores -j).
 #   -z, --zend-extension         register as a zend_extension in the generated ini file.
+#   -u, --uninstall              uninstall the extension instead of building it.
 #   -v, --verbose                show detail commands.
 #   --dry                        dry run mode.
 #
 # Example:
 #   phpenv pecl apcu           # latest version
 #   phpenv pecl apcu-4.0.2     # specific version
+#   phpenv pecl apcu -u        # uninstall
 #
 set -e
 
@@ -26,7 +28,7 @@ usage() {
 
 main() {
     script_dir=$(cd $(dirname $0); pwd)
-    opts=`getopt -o hvj:az -l help,verbose,php-version:,all,zend-extension,dry, -- "$@"`
+    opts=`getopt -o hvj:azu -l help,verbose,php-version:,all,zend-extension,uninstall,dry, -- "$@"`
     eval set -- "$opts"
     while [ -n "$1" ]; do
         case $1 in
@@ -34,6 +36,7 @@ main() {
             -j|--php-version) phpversion=$2; shift;;
             -a|--all) is_all=1;;
             -z|--zend-extension) is_zend=1;;
+            -u|--uninstall) is_uninstall=1;;
             -v|--verbose) is_verbose=1;;
             --dry) is_dry=1;;
             --) shift; break;;
@@ -67,7 +70,11 @@ main() {
 
     for v in $versions
     do
-        _build_extension $package $v
+        if [ $is_uninstall ];then
+            _uninstall_extension $package $v
+        else
+            _build_extension $package $v
+        fi
     done
     run phpenv rehash
 }
@@ -93,6 +100,25 @@ _build_extension() {
 
         info "build $(green $package) on php-$(green $version)"
         run pecl-build $package -p $php_dir/bin/phpize -i $php_dir/bin/php-config $options
+    fi
+}
+
+_uninstall_extension() {
+    local package=$1
+    local version=$2
+
+    if [ "$version" = "system" ];then
+        warn "skip uninstall 'system' environment."
+        return
+    else
+        local php_dir=$PHPENV_ROOT/versions/$version
+        if [ ! -e "$php_dir" ];then
+            warn "$(green $version) version dir not exist. skip it."
+            return
+        fi
+
+        info "uninstall $(green $package) on php-$(green $version)"
+        run pecl-build $package -u -i $php_dir/bin/php-config
     fi
 }
 

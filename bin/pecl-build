@@ -21,12 +21,13 @@ usage() {
     echo "  -c, --configure-options additional configure options.   (default: nothing)"
     echo "  -z, --zend-extension    registerd zend_extension at ini file generated."
     echo "  --skip-test             skip make test."
+    echo "  -u, --uninstall         uninstall the package instead of building it."
     exit 1;
 }
 
 main() {
     script_dir=$(cd $(dirname $0); pwd)
-    opts=`getopt -o hvd:p:i:c:z -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,dry, -- "$@"`
+    opts=`getopt -o hvd:p:i:c:zu -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,uninstall,dry, -- "$@"`
     eval set -- "$opts"
     while [ -n "$1" ]; do
         case $1 in
@@ -37,6 +38,7 @@ main() {
             -c|--configure-options) configure_options=$2; shift;;
             -z|--zend-extension) is_zend=1;;
             --skip-test) is_skip_test=1;;
+            -u|--uninstall) is_uninstall=1;;
             -v|--verbose) is_verbose=1;;
             --dry) is_dry=1;;
             --) shift; break;;
@@ -93,6 +95,11 @@ main() {
     fi
     debug "php-config command: $(green $phpconfig)"
     debug "additional configure options: $(green $configure_options)"
+
+    if [ $is_uninstall ];then
+        _uninstall_package $package
+        exit 0
+    fi
 
     ### main ###
 
@@ -168,6 +175,41 @@ main() {
 
     info "create $(green $ini_dir/$extension.ini) file."
     run echo "$content" \| tee $ini_dir/$extension.ini
+}
+
+_uninstall_package() {
+    local package=$1
+
+    # a version suffix (e.g. apcu-4.0.2) isn't part of the installed extension name.
+    if [[ "$package" =~ ^(.+)-[0-9] ]];then
+        extension=${BASH_REMATCH[1]}
+    else
+        extension=$package
+    fi
+    debug "extension: $(green $extension)"
+
+    ini_dir=$(eval "$($phpconfig --php-binary) --ini" | grep 'additional .ini' |cut -d':' -f2 |sed -e 's/ //g' -e 's/"//g')
+    extension_dir=$($phpconfig --extension-dir)
+
+    debug "ini_dir: $(green $ini_dir)"
+    debug "extension_dir: $(green $extension_dir)"
+
+    ini_file=$ini_dir/$extension.ini
+    so_file=$extension_dir/$extension.so
+
+    if [ -e "$ini_file" ] || [ $is_dry ];then
+        info "remove $(green $ini_file)"
+        run rm -f $ini_file
+    else
+        warn "ini file not found, skip it: $(green $ini_file)"
+    fi
+
+    if [ -e "$so_file" ] || [ $is_dry ];then
+        info "remove $(green $so_file)"
+        run rm -f $so_file
+    else
+        warn "extension file not found, skip it: $(green $so_file)"
+    fi
 }
 
 ## utility
