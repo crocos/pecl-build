@@ -20,22 +20,7 @@
 set -e
 
 usage() {
-    echo "USAGE: `basename $0` [Options] <package>"
-    echo "  build php extension on phpenv (without system)"
-    echo ""
-    echo "Required:"
-    echo "  package             package name."
-    echo "                      e.g."
-    echo "                          `basename $0` apcu          # latest version"
-    echo "                          `basename $0` apcu-4.0.2    # version specific"
-    echo ""
-    echo "Options:"
-    echo "  -h, --help                   show this help."
-    echo "  -v, --verbose                show detail commands."
-    echo "  -j, --php-version [version]  build for specified php version."
-    echo "  -a, --all                    build for all php versions in phpenv . When -a used, -j option is ignored."
-    echo "  -z, --zend-extension         registered zend_extension at generated ini file."
-    echo "  --dry                        dry run mode."
+    phpenv help "$(basename $0 | sed 's/^phpenv-//')"
     exit 1;
 }
 

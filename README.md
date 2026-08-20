@@ -22,7 +22,7 @@ $ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
 ### Use phpenv plugins
 
 ```
-% git clone https://github.com/crocos/pecl-build.git $PHPENV_ROOT/plugins/pecl-build
+% git clone https://github.com/crocos/pecl-build.git $(phpenv root)/plugins/pecl-build
 % phpenv pecl <package_name>
 ```
 
@@ -47,6 +47,18 @@ so created `.ini` config set `zend_extension`
 
 
 ## ChangeLog
+
+### v0.3.0 2026/08/19
+
+* Use HTTPS for pecl.php.net package downloads
+* Fix a crash when downloading a missing/invalid package (404 from pecl.php.net):
+  validate the tarball name up front and verify gzip integrity before extracting
+* Add the Summary/Usage comment block phpenv's help system requires, so
+  `phpenv pecl -h`/`--help` shows real help instead of "Sorry, this command
+  isn't documented yet."
+* Make `phpenv pecl` (no package given) print the same help text as
+  `phpenv pecl -h`, instead of a separate, out-of-sync usage message
+* Use `$(phpenv root)` instead of `$PHPENV_ROOT` in the docs
 
 ### v0.2.0 2026/02/11
 
