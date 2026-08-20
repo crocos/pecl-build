@@ -2,7 +2,7 @@
 
 ## How to use
 
-If you want usage detail, type `--help`.
+For usage details, run with `--help`.
 
 ### Use standalone
 
@@ -12,11 +12,11 @@ If you want usage detail, type `--help`.
 % bin/pecl-build <package_name>
 ```
 
-When standalone, build php version is system default.
-If you want use other php version, you can change `phpize` and `php-config` command by parameter.
+When run standalone, the extension is built against the system's default PHP version.
+To use a different PHP version, specify the `phpize` and `php-config` binaries with parameters.
 
 ```
-$ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
+$ bin/pecl-build <package_name> -p /path/to/phpize -i /path/to/php-config
 ```
 
 ### Use phpenv plugins
@@ -26,24 +26,24 @@ $ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
 % phpenv pecl <package_name>
 ```
 
-phpenv plugin follow php version for phpenv specified.
-If you want specify build php version, you can set parameter.
+As a phpenv plugin, it builds against the PHP version phpenv has selected.
+To build for a specific PHP version, pass a parameter instead.
 
 ```
 % phpenv pecl <package_name> -j <php version>
-% phpenv pecl <package_name> -a # build all php version by phpenv have.
+% phpenv pecl <package_name> -a # build for every PHP version phpenv has installed.
 ```
 
-*NOTICE: phpenv plugin version is now skipped `system` environment build.*
+*NOTE: the phpenv plugin skips the `system` environment when building.*
 
-you want specify package version:
+To specify a package version:
 
 ```
 % phpenv pecl <package_name>-<package_version>
 ```
 
-and when you build `zend_extension`, pass `-z (--zend-extension)` option.
-so created `.ini` config set `zend_extension`
+When building a `zend_extension`, pass the `-z` (`--zend-extension`) option,
+so the generated `.ini` file sets `zend_extension` instead of `extension`.
 
 
 ## ChangeLog
