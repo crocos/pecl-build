@@ -62,7 +62,7 @@ so the generated `.ini` file sets `zend_extension` instead of `extension`.
 
 ### v0.2.0 2026/02/11
 
-* Fix package downloads and fix typos
+* Fix package downloads and typos
 
 ### v0.1.0 2013/12/06
 
