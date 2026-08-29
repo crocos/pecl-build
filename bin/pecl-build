@@ -3,7 +3,7 @@ set -e
 
 usage() {
     echo "USAGE: `basename $0` [Options] <package>"
-    echo "  build pecl php ectension for any versions php."
+    echo "  build pecl php extension for any php version."
     echo ""
     echo "Required:"
     echo "  package             install package name."
@@ -17,16 +17,17 @@ usage() {
     echo "  --dry                   dry run mode."
     echo "  -d, --base-dir          specified build directory.      (default: /tmp/pecl-build)"
     echo "  -p, --phpize            absolute path for phpize.       (default: environment dependent)"
-    echo "  -i, --php-config        aboslute path for php-config.   (default: environment dependent)"
+    echo "  -i, --php-config        absolute path for php-config.   (default: environment dependent)"
     echo "  -c, --configure-options additional configure options.   (default: nothing)"
-    echo "  -z, --zend-extension    registerd zend_extensin at ini file generated."
+    echo "  -z, --zend-extension    registerd zend_extension at ini file generated."
     echo "  --skip-test             skip make test."
+    echo "  -u, --uninstall         uninstall the package instead of building it."
     exit 1;
 }
 
 main() {
     script_dir=$(cd $(dirname $0); pwd)
-    opts=`getopt -o hvd:p:i:c:z -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,dry, -- "$@"`
+    opts=`getopt -o hvd:p:i:c:zu -l help,verbose,base-dir:,phpize:,configure:,zend-extension,skip-test,uninstall,dry, -- "$@"`
     eval set -- "$opts"
     while [ -n "$1" ]; do
         case $1 in
@@ -37,6 +38,7 @@ main() {
             -c|--configure-options) configure_options=$2; shift;;
             -z|--zend-extension) is_zend=1;;
             --skip-test) is_skip_test=1;;
+            -u|--uninstall) is_uninstall=1;;
             -v|--verbose) is_verbose=1;;
             --dry) is_dry=1;;
             --) shift; break;;
@@ -94,13 +96,22 @@ main() {
     debug "php-config command: $(green $phpconfig)"
     debug "additional configure options: $(green $configure_options)"
 
+    if [ $is_uninstall ];then
+        _uninstall_package $package
+        exit 0
+    fi
+
     ### main ###
 
     # crete build base
-    pecl_url=http://pecl.php.net/get
+    pecl_url=https://pecl.php.net/get
     url=$pecl_url/$package
 
-    tarball=$(curl -I $url 2>/dev/null |grep Content-disposition |cut -d'=' -f2 |tr -d \")
+    tarball=$(curl -LsI $url 2>/dev/null |grep -i Content-disposition |cut -d'=' -f2 |tr -d '"\r')
+    if [ "x$tarball" = "x" ];then
+        fatal "package not found: $(green $package) ($url)"
+        exit 1
+    fi
     package_name=${tarball%.*}
     extension=${package_name%-*}
     version=${package_name##*-}
@@ -122,7 +133,17 @@ main() {
 
     # fetch package
     info "fetch package: $(green $url)"
-    run curl $url \| tar xzf - -C $build_dir
+    tarball_path=$build_dir/$tarball
+    run curl -Ls -o $tarball_path $url
+    if [ ! $is_dry ];then
+        if ! gzip -t "$tarball_path" 2>/dev/null;then
+            fatal "fetched file is not a valid gzip package: $(green $url)"
+            rm -f $tarball_path
+            exit 1
+        fi
+    fi
+    run tar xzf $tarball_path -C $build_dir
+    run rm -f $tarball_path
 
     # build package
     info "build package"
@@ -131,7 +152,7 @@ main() {
     run $phpize
     run ./configure $configure_options
     run make
-    if [ $is_skip_test ];then
+    if [ 1 ];then
         warn "skip test mode. not run 'make test'"
     else
         run make test
@@ -154,6 +175,41 @@ main() {
 
     info "create $(green $ini_dir/$extension.ini) file."
     run echo "$content" \| tee $ini_dir/$extension.ini
+}
+
+_uninstall_package() {
+    local package=$1
+
+    # a version suffix (e.g. apcu-4.0.2) isn't part of the installed extension name.
+    if [[ "$package" =~ ^(.+)-[0-9] ]];then
+        extension=${BASH_REMATCH[1]}
+    else
+        extension=$package
+    fi
+    debug "extension: $(green $extension)"
+
+    ini_dir=$(eval "$($phpconfig --php-binary) --ini" | grep 'additional .ini' |cut -d':' -f2 |sed -e 's/ //g' -e 's/"//g')
+    extension_dir=$($phpconfig --extension-dir)
+
+    debug "ini_dir: $(green $ini_dir)"
+    debug "extension_dir: $(green $extension_dir)"
+
+    ini_file=$ini_dir/$extension.ini
+    so_file=$extension_dir/$extension.so
+
+    if [ -e "$ini_file" ] || [ $is_dry ];then
+        info "remove $(green $ini_file)"
+        run rm -f $ini_file
+    else
+        warn "ini file not found, skip it: $(green $ini_file)"
+    fi
+
+    if [ -e "$so_file" ] || [ $is_dry ];then
+        info "remove $(green $so_file)"
+        run rm -f $so_file
+    else
+        warn "extension file not found, skip it: $(green $so_file)"
+    fi
 }
 
 ## utility

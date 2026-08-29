@@ -1,8 +1,8 @@
-# pecl-build - Build pecl extension for multiple versions php.
+# pecl-build - phpenv plugin for installing pecl extensions
 
 ## How to use
 
-If you want usage detail, type `--help`.
+For usage details, run with `--help`.
 
 ### Use standalone
 
@@ -12,41 +12,74 @@ If you want usage detail, type `--help`.
 % bin/pecl-build <package_name>
 ```
 
-When standalone, build php version is system default.
-If you want use other php version, you can change `phpize` and `php-config` command by parameter.
+When run standalone, the extension is built against the system's default PHP version.
+To use a different PHP version, specify the `phpize` and `php-config` binaries with parameters.
 
 ```
-$ bin/pecl-build <package_naem> -p /path/to/phpize -i /path/to/php-config
+$ bin/pecl-build <package_name> -p /path/to/phpize -i /path/to/php-config
 ```
 
 ### Use phpenv plugins
 
 ```
-% git clone https://github.com/crocos/pecl-build.git $PHPENV_ROOT/plugins/pecl-build
+% git clone https://github.com/crocos/pecl-build.git $(phpenv root)/plugins/pecl-build
 % phpenv pecl <package_name>
 ```
 
-phpenv plugin follow php version for phpenv specified.
-If you want specify build php version, you can set parameter.
+As a phpenv plugin, it builds against the PHP version phpenv has selected.
+To build for a specific PHP version, pass a parameter instead.
 
 ```
 % phpenv pecl <package_name> -j <php version>
-% phpenv pecl <package_name> -a # build all php version by phpenv have.
+% phpenv pecl <package_name> -a # build for every PHP version phpenv has installed.
 ```
 
-*NOTICE: phpenv plugin versin is now skipped `system` environment build.*
+*NOTE: the phpenv plugin skips the `system` environment when building.*
 
-you want specify package version:
+To specify a package version:
 
 ```
 % phpenv pecl <package_name>-<package_version>
 ```
 
-and when you build `zend_extension`, pass `-z (--zend-extension)` option.
-so created `.ini` config set `zend_extension`
+When building a `zend_extension`, pass the `-z` (`--zend-extension`) option,
+so the generated `.ini` file sets `zend_extension` instead of `extension`.
+
+### Uninstall
+
+Pass `-u` (`--uninstall`) with the package name to remove a previously
+installed extension instead of building it. This deletes the generated
+`.ini` file and the built `.so` file for that extension.
+
+```
+% bin/pecl-build <package_name> -u -i /path/to/php-config
+% phpenv pecl <package_name> -u
+% phpenv pecl <package_name> -u -a # uninstall from every PHP version phpenv has installed.
+```
 
 
 ## ChangeLog
+
+### v0.4.0 2026/08/19
+
+* Add a `-u`/`--uninstall` option to `pecl-build` and `phpenv pecl` that
+  removes a previously installed extension's `.ini` and `.so` files
+
+### v0.3.0 2026/08/19
+
+* Use HTTPS for pecl.php.net package downloads
+* Fix a crash when downloading a missing/invalid package (404 from pecl.php.net):
+  validate the tarball name up front and verify gzip integrity before extracting
+* Add the Summary/Usage comment block phpenv's help system requires, so
+  `phpenv pecl -h`/`--help` shows real help instead of "Sorry, this command
+  isn't documented yet."
+* Make `phpenv pecl` (no package given) print the same help text as
+  `phpenv pecl -h`, instead of a separate, out-of-sync usage message
+* Use `$(phpenv root)` instead of `$PHPENV_ROOT` in the docs
+
+### v0.2.0 2026/02/11
+
+* Fix package downloads and typos
 
 ### v0.1.0 2013/12/06
 
